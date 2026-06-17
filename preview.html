@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日常记账 - 预览</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+.phone-frame { width: 390px; height: 844px; border-radius: 44px; overflow: hidden; position: relative; background: #f5f6fa; box-shadow: 0 0 0 12px #222, 0 0 0 14px #444, 0 20px 60px rgba(0,0,0,0.5); }
+.status-bar { height: 54px; background: #f5f6fa; display: flex; align-items: center; justify-content: space-between; padding: 14px 28px 0; position: relative; z-index: 100; }
+.status-bar .time { font-size: 15px; font-weight: 600; color: #1a1a2e; }
+.status-bar .icons { display: flex; gap: 6px; font-size: 13px; }
+.notch { width: 126px; height: 34px; background: #222; border-radius: 0 0 20px 20px; position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 101; }
+.screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* Home Screen */
+.home-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f5f6fa; }
+.home-header h1 { font-size: 20px; font-weight: bold; color: #1a1a2e; }
+.header-buttons { display: flex; gap: 8px; }
+.stats-btn { display: flex; align-items: center; padding: 6px 12px; background: #f0f0ff; border-radius: 8px; border: none; cursor: pointer; }
+.stats-btn span { font-size: 13px; color: #5b6abf; font-weight: 600; margin-left: 4px; }
+.settings-btn { padding: 7px 10px; background: #f0f0ff; border-radius: 8px; border: none; cursor: pointer; font-size: 16px; }
+
+.summary-card { background: #fff; margin: 0 16px; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.summary-title { font-size: 18px; font-weight: 700; color: #1a1a2e; margin-bottom: 14px; }
+.summary-row { display: flex; justify-content: space-around; }
+.summary-item { text-align: center; flex: 1; }
+.summary-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+.summary-value-expense { font-size: 20px; font-weight: 700; color: #ff4757; }
+.summary-value-income { font-size: 20px; font-weight: 700; color: #2ed573; }
+.summary-value { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+.summary-value.positive { color: #2ed573; }
+.summary-value.negative { color: #ff4757; }
+.summary-divider { width: 1px; background: #eee; margin: 0 8px; }
+
+.action-row { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+.manage-btn { padding: 6px 12px; background: #e8e8ff; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; color: #5b6abf; }
+.total-count { font-size: 12px; color: #aaa; }
+
+.expense-list { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+.group-header { font-size: 13px; color: #666; padding: 10px 20px; font-weight: 600; }
+.expense-row { display: flex; justify-content: space-between; align-items: center; background: #fff; margin: 0 16px 1px; padding: 14px 16px; cursor: pointer; transition: background 0.15s; }
+.expense-row:hover { background: #fafafa; }
+.expense-left { display: flex; align-items: center; flex: 1; }
+.expense-icon { font-size: 28px; margin-right: 12px; }
+.expense-info { flex-shrink: 1; }
+.expense-cat { font-size: 15px; font-weight: 600; color: #1a1a2e; }
+.expense-note { font-size: 12px; color: #999; margin-top: 2px; }
+.expense-payment { font-size: 12px; color: #7b8abf; margin-top: 2px; }
+.expense-right { text-align: right; margin-left: 8px; }
+.expense-amount { font-size: 16px; font-weight: 700; }
+.expense-amount.expense { color: #ff4757; }
+.expense-amount.income { color: #2ed573; }
+.expense-time { font-size: 11px; color: #bbb; margin-top: 2px; }
+.expense-delete { margin-top: 4px; padding: 2px; background: none; border: none; cursor: pointer; font-size: 14px; color: #ddd; }
+
+.fab { position: absolute; bottom: 30px; right: 24px; width: 60px; height: 60px; border-radius: 30px; background: #5b6abf; display: flex; justify-content: center; align-items: center; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(91,106,191,0.4); z-index: 50; transition: transform 0.2s; }
+.fab:hover { transform: scale(1.1); }
+.fab span { font-size: 32px; color: #fff; font-weight: 300; line-height: 44px; }
+
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 100px 20px 0; }
+.empty-icon { font-size: 64px; margin-bottom: 12px; }
+.empty-text { font-size: 15px; color: #aaa; }
+
+/* Modal overlay */
+.modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; display: none; justify-content: flex-end; }
+.modal-overlay.active { display: flex; }
+.modal-content { background: #fff; border-radius: 20px 20px 0 0; max-height: 90%; width: 100%; padding-top: 54px; overflow: hidden; display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; }
+.modal-header .cancel { background: none; border: none; color: #999; font-size: 16px; cursor: pointer; }
+.modal-header .title { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+.modal-header .save { background: none; border: none; color: #5b6abf; font-size: 16px; font-weight: 600; cursor: pointer; }
+
+.type-toggle { display: flex; margin: 16px 20px 0; border-radius: 10px; overflow: hidden; background: #f5f6fa; }
+.type-btn { flex: 1; padding: 10px 0; text-align: center; border: none; cursor: pointer; font-size: 15px; color: #999; font-weight: 600; background: transparent; transition: all 0.2s; }
+.type-btn.active-expense { background: #ff4757; color: #fff; }
+.type-btn.active-income { background: #2ed573; color: #fff; }
+
+.modal-body { flex: 1; overflow-y: auto; }
+.amount-section { margin: 20px; text-align: center; }
+.amount-label { font-size: 13px; color: #999; margin-bottom: 8px; }
+.amount-input { font-size: 42px; font-weight: 700; color: #1a1a2e; text-align: center; border: none; outline: none; width: 100%; background: transparent; }
+.amount-input::placeholder { color: #ddd; }
+
+.picker-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-top: 1px solid #f5f5f5; cursor: pointer; }
+.picker-row:hover { background: #fafafa; }
+.picker-label { font-size: 15px; color: #666; }
+.picker-value { font-size: 15px; color: #333; }
+.picker-arrow { font-size: 22px; color: #ddd; margin-left: 4px; }
+
+.note-section { padding: 12px 20px; border-top: 1px solid #f5f5f5; }
+.note-input { border: 1px solid #eee; border-radius: 10px; padding: 10px 14px; font-size: 15px; color: #333; margin-top: 8px; width: 100%; outline: none; background: #fafafa; }
+.note-input::placeholder { color: #ccc; }
+
+/* Bottom Sheet */
+.bottom-sheet-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 300; display: none; justify-content: flex-end; padding-top: 54px; }
+.bottom-sheet-overlay.active { display: flex; }
+.bottom-sheet { background: #fff; border-radius: 20px 20px 0 0; width: 100%; padding: 20px 0 30px; margin-top: auto; max-height: 70%; overflow-y: auto; }
+.bottom-sheet-title { font-size: 17px; font-weight: 700; color: #1a1a2e; text-align: center; margin-bottom: 16px; }
+.picker-grid { display: flex; flex-wrap: wrap; padding: 0 16px; }
+.picker-item { width: 25%; padding: 14px 0; text-align: center; border-radius: 10px; margin: 4px; cursor: pointer; font-size: 14px; color: #555; transition: background 0.15s; }
+.picker-item:hover { background: #f5f6fa; }
+.picker-item.selected { background: #ede9ff; }
+
+.picker-list { padding: 0 16px; }
+.picker-list-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 14px; border-radius: 10px; margin: 2px 0; cursor: pointer; transition: background 0.15s; }
+.picker-list-item:hover { background: #f5f6fa; }
+.picker-list-item.selected { background: #ede9ff; }
+.picker-list-item-text { font-size: 16px; color: #333; }
+.checkmark { font-size: 18px; color: #5b6abf; }
+
+/* Stats Screen */
+.stats-screen { background: #f5f6fa; }
+.stats-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; }
+.stats-header h1 { font-size: 20px; font-weight: bold; color: #1a1a2e; }
+.close-btn { font-size: 24px; color: #888; padding: 4px; background: none; border: none; cursor: pointer; }
+
+.filter-section { margin: 0 16px 16px; background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.filter-row { display: flex; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.filter-label { font-size: 14px; font-weight: 600; color: #666; width: 70px; margin-right: 8px; }
+.filter-chip { padding: 6px 12px; border-radius: 8px; background: #f5f6fa; margin-right: 6px; border: none; cursor: pointer; font-size: 13px; color: #333; transition: all 0.2s; }
+.filter-chip:hover { background: #e8e8e8; }
+.filter-chip.active { background: #5b6abf; color: #fff; }
+.filter-separator { font-size: 13px; color: #999; margin: 0 4px; }
+.type-toggle-group { display: flex; gap: 8px; }
+.type-chip { padding: 6px 16px; border-radius: 8px; background: #f5f6fa; border: 1px solid #e0e0e0; cursor: pointer; font-size: 13px; color: #666; transition: all 0.2s; }
+.type-chip.expense-active { background: #fff0f0; border-color: #ff4757; color: #ff4757; font-weight: 600; }
+.type-chip.income-active { background: #f0fff0; border-color: #2ed573; color: #2ed573; font-weight: 600; }
+.filter-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+.reset-btn { padding: 8px 20px; border-radius: 8px; background: #f5f6fa; border: none; cursor: pointer; font-size: 14px; color: #666; }
+.reset-btn:hover { background: #e8e8e8; }
+
+.stats-card { margin: 0 16px 16px; background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.stats-card-title { font-size: 16px; font-weight: bold; color: #1a1a2e; margin-bottom: 12px; }
+.stats-row { display: flex; }
+.stat-item { flex: 1; text-align: center; padding: 8px 0; }
+.stat-item.expense-item { border-left: 1px solid #eee; border-right: 1px solid #eee; }
+.stat-item.balance-item { border-right: 1px solid #eee; }
+.stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+.stat-value-expense { font-size: 18px; font-weight: bold; color: #ff4757; }
+.stat-value-income { font-size: 18px; font-weight: bold; color: #2ed573; }
+.stat-value { font-size: 18px; font-weight: bold; color: #1a1a2e; }
+.stat-value.positive { color: #2ed573; }
+.stat-value.negative { color: #ff4757; }
+.record-count { font-size: 12px; color: #aaa; text-align: center; margin-top: 8px; }
+
+.section { margin: 0 16px 16px; background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.section-title { font-size: 16px; font-weight: bold; color: #1a1a2e; margin-bottom: 16px; }
+.cat-item { margin-bottom: 20px; }
+.cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.cat-name { font-size: 14px; font-weight: 600; color: #1a1a2e; flex: 1; }
+.cat-amount { font-size: 14px; font-weight: bold; color: #5b6abf; }
+.cat-progress { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+.cat-bar { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.cat-percent { font-size: 11px; color: #888; margin-top: 4px; text-align: right; }
+
+.stats-expense-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+.stats-expense-row:last-child { border-bottom: none; }
+.stats-expense-left { display: flex; align-items: center; flex: 1; }
+.stats-expense-icon { font-size: 24px; margin-right: 10px; }
+.stats-expense-info { flex-shrink: 1; }
+.stats-expense-cat { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+.stats-expense-note { font-size: 12px; color: #999; margin-top: 2px; }
+.stats-expense-right { text-align: right; margin-left: 8px; }
+.stats-expense-amount { font-size: 15px; font-weight: 700; }
+.stats-expense-payment { font-size: 11px; color: #bbb; margin-top: 2px; }
+
+/* Payment Method Screen */
+.payment-screen { background: #f5f6fa; }
+.payment-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #eee; }
+.back-btn { font-size: 28px; color: #333; font-weight: 300; background: none; border: none; cursor: pointer; padding: 8px; }
+.payment-header h1 { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+.add-btn { color: #5b6abf; font-size: 16px; font-weight: 600; background: none; border: none; cursor: pointer; }
+
+.payment-card { display: flex; justify-content: space-between; align-items: center; background: #fff; margin: 16px; border-radius: 14px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.payment-card-left { display: flex; align-items: center; }
+.payment-card-icon { font-size: 32px; margin-right: 14px; }
+.payment-card-name { font-size: 16px; font-weight: 600; color: #1a1a2e; }
+.payment-card-hint { font-size: 12px; color: #aaa; margin-top: 2px; }
+.delete-btn { padding: 6px 12px; border: 1px solid #ff4757; border-radius: 8px; background: none; color: #ff4757; font-size: 13px; cursor: pointer; }
+.delete-btn:hover { background: #fff0f0; }
+
+/* Settings Screen */
+.settings-screen { background: #f5f6fa; }
+.settings-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #fff; }
+.settings-header h1 { font-size: 20px; font-weight: bold; color: #1a1a2e; }
+.settings-close { padding: 8px; background: none; border: none; font-size: 15px; color: #5b6abf; cursor: pointer; }
+
+.settings-section { margin: 8px 16px 16px; }
+.settings-section-title { font-size: 16px; font-weight: bold; color: #1a1a2e; margin-bottom: 12px; padding: 0 4px; }
+.settings-btn { display: flex; background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 10px; border: none; cursor: pointer; width: calc(100% - 0px); text-align: left; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+.settings-btn:hover { background: #fafafa; }
+.settings-btn.danger { border: 1px solid #ff4757; }
+.settings-btn-icon { font-size: 28px; margin-right: 14px; }
+.settings-btn-content { flex: 1; }
+.settings-btn-title { font-size: 16px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+.settings-btn-desc { font-size: 13px; color: #999; }
+.settings-btn-title.danger { color: #ff4757; }
+.settings-btn-desc.danger { color: #ff4757; }
+
+.footer { text-align: center; padding: 32px 0; }
+.version { font-size: 14px; color: #999; margin-bottom: 4px; }
+.copyright { font-size: 12px; color: #ccc; }
+
+/* Date Picker Modal */
+.date-picker-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 400; display: none; justify-content: flex-end; align-items: flex-end; }
+.date-picker-overlay.active { display: flex; }
+.date-picker-container { background: #fff; border-radius: 20px 20px 0 0; width: 100%; overflow: hidden; margin-bottom: 20px; }
+.date-picker-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f0f0f0; }
+.date-picker-header .cancel { background: none; border: none; color: #999; font-size: 16px; cursor: pointer; }
+.date-picker-header .title { font-size: 17px; font-weight: 700; color: #1a1a2e; }
+.date-picker-header .confirm { background: none; border: none; color: #5b6abf; font-size: 16px; font-weight: 600; cursor: pointer; }
+.date-picker-body { padding: 16px; }
+.date-picker-grid { display: flex; flex-wrap: wrap; }
+.date-picker-day { width: calc(100% / 7); text-align: center; padding: 10px 0; cursor: pointer; border-radius: 8px; font-size: 14px; color: #333; }
+.date-picker-day:hover { background: #f5f6fa; }
+.date-picker-day.selected { background: #5b6abf; color: #fff; }
+.date-picker-day.today { border: 1px solid #5b6abf; }
+.date-picker-day.other-month { color: #ddd; }
+.date-picker-nav { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; }
+.date-picker-nav button { background: none; border: none; font-size: 20px; cursor: pointer; padding: 8px; color: #5b6abf; }
+.date-picker-nav span { font-size: 16px; font-weight: 600; color: #1a1a2e; }
+.date-picker-weekdays { display: flex; padding: 0 16px 8px; }
+.date-picker-weekday { width: calc(100% / 7); text-align: center; font-size: 12px; color: #999; }
+
+/* Delete confirm */
+.delete-confirm { display: flex; align-items: center; gap: 6px; }
+.delete-confirm-text { font-size: 13px; color: #e74c3c; margin-right: 4px; }
+.btn-small { padding: 3px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; }
+.btn-confirm { background: #ff4757; color: #fff; }
+.btn-cancel-small { background: #eee; color: #333; }
+
+/* Add payment modal */
+.add-pm-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; display: none; justify-content: center; align-items: center; }
+.add-pm-overlay.active { display: flex; }
+.add-pm-card { width: 88%; background: #fff; border-radius: 20px; padding: 24px; }
+.add-pm-title { font-size: 19px; font-weight: 700; color: #1a1a2e; text-align: center; margin-bottom: 20px; }
+.add-pm-label { font-size: 14px; color: #666; margin-bottom: 8px; }
+.emoji-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.emoji-item { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; border-radius: 10px; background: #f5f6fa; cursor: pointer; font-size: 28px; }
+.emoji-item.selected { background: #ede9ff; border: 2px solid #5b6abf; }
+.add-pm-input { border: 1px solid #e8e8e8; border-radius: 12px; padding: 12px 16px; font-size: 16px; color: #333; width: 100%; background: #fafafa; outline: none; }
+.add-pm-actions { display: flex; gap: 12px; margin-top: 24px; }
+.add-pm-btn { flex: 1; padding: 14px; border-radius: 12px; text-align: center; border: none; cursor: pointer; font-size: 16px; font-weight: 600; }
+.add-pm-btn.cancel { background: #f5f6fa; color: #5b6abf; }
+.add-pm-btn.confirm { background: #5b6abf; color: #fff; }
+
+/* Multi-select payment filter */
+.multi-select-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; border-radius: 10px; margin: 2px 0; cursor: pointer; transition: background 0.15s; }
+.multi-select-item:hover { background: #f5f6fa; }
+.multi-select-item.selected { background: #ede9ff; }
+.multi-select-item-text { font-size: 16px; color: #333; }
+.bottom-sheet-confirm { margin: 16px 16px 0; padding: 14px; border-radius: 12px; background: #5b6abf; text-align: center; border: none; cursor: pointer; font-size: 16px; font-weight: 600; color: #fff; width: calc(100% - 32px); }
+
+/* Scrollable area */
+.scroll-area { flex: 1; overflow-y: auto; }
+.scroll-area::-webkit-scrollbar { display: none; }
+
+/* Animations */
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-overlay.active .modal-content { animation: slideUp 0.3s ease; }
+.modal-overlay.active { animation: fadeIn 0.2s ease; }
+.bottom-sheet-overlay.active { animation: fadeIn 0.2s ease; }
+.bottom-sheet-overlay.active .bottom-sheet { animation: slideUp 0.3s ease; }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+  <div class="notch"></div>
+  <div class="status-bar">
+    <span class="time" id="statusTime">12:00</span>
+    <span class="icons">📶 🔋</span>
+  </div>
+
+  <!-- ========== 主页 ========== -->
+  <div class="screen active" id="homeScreen">
+    <div class="home-header">
+      <h1>📒 日常记账</h1>
+      <div class="header-buttons">
+        <button class="stats-btn" onclick="showScreen('statsScreen')"><span>📈</span><span>账单</span></button>
+        <button class="settings-btn" onclick="showScreen('settingsScreen')">⚙️</button>
+      </div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-title">今日收支</div>
+      <div class="summary-row">
+        <div class="summary-item">
+          <div class="summary-label">支出</div>
+          <div class="summary-value-expense" id="todayExpense">0.00</div>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <div class="summary-label">收入</div>
+          <div class="summary-value-income" id="todayIncome">0.00</div>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-item">
+          <div class="summary-label">结余</div>
+          <div class="summary-value" id="todayBalance">0.00</div>
+        </div>
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="manage-btn" onclick="showScreen('paymentScreen')">⚙️ 管理付款方式</button>
+      <span class="total-count" id="totalCount">共 0 条记录</span>
+    </div>
+    <div class="expense-list" id="expenseList"></div>
+    <button class="fab" onclick="openAddExpense()"><span>+</span></button>
+  </div>
+
+  <!-- ========== 账单统计 ========== -->
+  <div class="screen" id="statsScreen">
+    <div class="stats-screen" style="display:flex;flex-direction:column;height:100%;">
+      <div class="stats-header">
+        <h1>📈 账单统计</h1>
+        <button class="close-btn" onclick="showScreen('homeScreen')">✕</button>
+      </div>
+      <div class="scroll-area">
+        <div style="padding-bottom:100px;">
+          <!-- 过滤条件 -->
+          <div class="filter-section">
+            <div class="filter-row">
+              <span class="filter-label">日期范围</span>
+              <button class="filter-chip" id="filterStartDate" onclick="openDatePicker('start')">2026-05-01</button>
+              <span class="filter-separator">至</span>
+              <button class="filter-chip" id="filterEndDate" onclick="openDatePicker('end')">2026-05-28</button>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label">付款方式</span>
+              <button class="filter-chip" id="filterPaymentBtn" onclick="openPaymentFilter()">全部</button>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label">消费类型</span>
+              <div class="type-toggle-group">
+                <button class="type-chip expense-active" id="filterTypeExpense" onclick="toggleFilterType('expense')">支出</button>
+                <button class="type-chip income-active" id="filterTypeIncome" onclick="toggleFilterType('income')">收入</button>
+              </div>
+            </div>
+            <div class="filter-actions">
+              <button class="reset-btn" onclick="resetFilters()">重置</button>
+            </div>
+          </div>
+
+          <!-- 统计卡片 -->
+          <div class="stats-card">
+            <div class="stats-card-title">筛选结果</div>
+            <div class="stats-row">
+              <div class="stat-item expense-item">
+                <div class="stat-label">支出</div>
+                <div class="stat-value-expense" id="filterExpense">¥ 0.00</div>
+              </div>
+              <div class="stat-item income-item">
+                <div class="stat-label">收入</div>
+                <div class="stat-value-income" id="filterIncome">¥ 0.00</div>
+              </div>
+              <div class="stat-item balance-item">
+                <div class="stat-label">结余</div>
+                <div class="stat-value" id="filterBalance">¥ 0.00</div>
+              </div>
+            </div>
+            <div class="record-count" id="filterRecordCount">共 0 条记录</div>
+          </div>
+
+          <!-- 分类统计 -->
+          <div class="section" id="categoryStatsSection" style="display:none;">
+            <div class="section-title">消费分类</div>
+            <div id="categoryStatsList"></div>
+          </div>
+
+          <!-- 付款方式统计 -->
+          <div class="section" id="paymentStatsSection" style="display:none;">
+            <div class="section-title">付款方式</div>
+            <div id="paymentStatsList"></div>
+          </div>
+
+          <!-- 账单明细 -->
+          <div class="section">
+            <div class="section-title">账单明细</div>
+            <div id="filterExpenseList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 付款方式 ========== -->
+  <div class="screen" id="paymentScreen">
+    <div class="payment-screen" style="display:flex;flex-direction:column;height:100%;">
+      <div class="payment-header">
+        <button class="back-btn" onclick="showScreen('homeScreen')">‹</button>
+        <h1>付款方式</h1>
+        <button class="add-btn" onclick="openAddPayment()">+ 新增</button>
+      </div>
+      <div class="scroll-area" id="paymentList"></div>
+    </div>
+  </div>
+
+  <!-- ========== 设置 ========== -->
+  <div class="screen" id="settingsScreen">
+    <div class="settings-screen" style="display:flex;flex-direction:column;height:100%;">
+      <div class="settings-header">
+        <h1>⚙️ 设置</h1>
+        <button class="settings-close" onclick="showScreen('homeScreen')">✕ 关闭</button>
+      </div>
+      <div class="scroll-area">
+        <div class="settings-section">
+          <div class="settings-section-title">数据管理</div>
+          <button class="settings-btn" onclick="exportData()">
+            <span class="settings-btn-icon">📤</span>
+            <div class="settings-btn-content">
+              <div class="settings-btn-title">导出数据</div>
+              <div class="settings-btn-desc">将记账数据导出为备份文件</div>
+            </div>
+          </button>
+          <button class="settings-btn" onclick="importData()">
+            <span class="settings-btn-icon">📥</span>
+            <div class="settings-btn-content">
+              <div class="settings-btn-title">导入数据</div>
+              <div class="settings-btn-desc">从备份文件恢复记账数据</div>
+            </div>
+          </button>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-title">其他</div>
+          <button class="settings-btn danger" onclick="clearAllData()">
+            <span class="settings-btn-icon">🗑️</span>
+            <div class="settings-btn-content">
+              <div class="settings-btn-title danger">清除所有数据</div>
+              <div class="settings-btn-desc danger">删除所有记账记录和设置</div>
+            </div>
+          </button>
+        </div>
+        <div class="footer">
+          <div class="version">版本 1.0.6</div>
+          <div class="copyright">© 2024 日常记账</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 记账弹窗 ========== -->
+  <div class="modal-overlay" id="addExpenseModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button class="cancel" onclick="closeAddExpense()">取消</button>
+        <span class="title">记一笔</span>
+        <button class="save" onclick="saveExpense()">保存</button>
+      </div>
+      <div class="type-toggle">
+        <button class="type-btn active-expense" id="typeExpenseBtn" onclick="toggleType('expense')">支出</button>
+        <button class="type-btn" id="typeIncomeBtn" onclick="toggleType('income')">收入</button>
+      </div>
+      <div class="modal-body">
+        <div class="amount-section">
+          <div class="amount-label">金额</div>
+          <input class="amount-input" id="amountInput" type="text" placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="picker-row" onclick="openDatePicker('expense')">
+          <span class="picker-label">日期</span>
+          <span class="picker-value" id="expenseDateValue">今天</span>
+          <span class="picker-arrow">›</span>
+        </div>
+        <div class="picker-row" onclick="openCategoryPicker()">
+          <span class="picker-label">分类</span>
+          <span class="picker-value" id="categoryValue">🍜 餐饮</span>
+          <span class="picker-arrow">›</span>
+        </div>
+        <div class="picker-row" onclick="openPaymentPicker()">
+          <span class="picker-label" id="paymentLabel">付款方式</span>
+          <span class="picker-value" id="paymentValue">💵 现金</span>
+          <span class="picker-arrow">›</span>
+        </div>
+        <div class="note-section">
+          <div style="font-size:15px;color:#666;">备注（可选）</div>
+          <input class="note-input" id="noteInput" type="text" placeholder="随便写点什么...">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 分类选择弹窗 ========== -->
+  <div class="bottom-sheet-overlay" id="categoryPickerOverlay" onclick="closeCategoryPicker(event)">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+      <div class="bottom-sheet-title">选择分类</div>
+      <div class="picker-grid" id="categoryGrid"></div>
+    </div>
+  </div>
+
+  <!-- ========== 付款方式选择弹窗 ========== -->
+  <div class="bottom-sheet-overlay" id="paymentPickerOverlay" onclick="closePaymentPicker(event)">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+      <div class="bottom-sheet-title">选择付款方式</div>
+      <div class="picker-list" id="paymentPickerList"></div>
+    </div>
+  </div>
+
+  <!-- ========== 日期选择弹窗 ========== -->
+  <div class="date-picker-overlay" id="datePickerOverlay">
+    <div class="date-picker-container">
+      <div class="date-picker-header">
+        <button class="cancel" onclick="closeDatePicker()">取消</button>
+        <span class="title" id="datePickerTitle">选择日期</span>
+        <button class="confirm" onclick="confirmDatePicker()">确定</button>
+      </div>
+      <div class="date-picker-nav">
+        <button onclick="prevMonth()">‹</button>
+        <span id="datePickerMonth">2026年5月</span>
+        <button onclick="nextMonth()">›</button>
+      </div>
+      <div class="date-picker-weekdays">
+        <div class="date-picker-weekday">日</div>
+        <div class="date-picker-weekday">一</div>
+        <div class="date-picker-weekday">二</div>
+        <div class="date-picker-weekday">三</div>
+        <div class="date-picker-weekday">四</div>
+        <div class="date-picker-weekday">五</div>
+        <div class="date-picker-weekday">六</div>
+      </div>
+      <div class="date-picker-body">
+        <div class="date-picker-grid" id="datePickerGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 付款方式多选弹窗（账单过滤） ========== -->
+  <div class="bottom-sheet-overlay" id="paymentFilterOverlay" onclick="closePaymentFilter(event)">
+    <div class="bottom-sheet" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0 20px 12px;border-bottom:1px solid #f0f0f0;">
+        <span style="font-size:17px;font-weight:700;color:#1a1a2e;">选择付款方式</span>
+        <button style="background:none;border:none;font-size:20px;color:#999;cursor:pointer;" onclick="closePaymentFilter()">✕</button>
+      </div>
+      <div class="picker-list" id="paymentFilterList" style="padding:0 16px;max-height:300px;"></div>
+      <button class="bottom-sheet-confirm" onclick="confirmPaymentFilter()">确认</button>
+      <div style="height:20px;"></div>
+    </div>
+  </div>
+
+  <!-- ========== 新增付款方式弹窗 ========== -->
+  <div class="add-pm-overlay" id="addPmOverlay" onclick="closeAddPayment(event)">
+    <div class="add-pm-card" onclick="event.stopPropagation()">
+      <div class="add-pm-title">新增付款方式</div>
+      <div class="add-pm-label">图标</div>
+      <div class="emoji-grid" id="emojiGrid"></div>
+      <div class="add-pm-label" style="margin-top:16px;">名称</div>
+      <input class="add-pm-input" id="pmNameInput" type="text" placeholder="例如：信用卡、储值卡...">
+      <div class="add-pm-actions">
+        <button class="add-pm-btn cancel" onclick="closeAddPayment()">取消</button>
+        <button class="add-pm-btn confirm" onclick="savePaymentMethod()">确定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ 数据 ============
+const EXPENSE_CATEGORIES = ['餐饮','交通','购物','居住','娱乐','医疗','教育','通讯','服饰','其他'];
+const INCOME_CATEGORIES = ['工资','奖金','兼职','投资','退款','红包','其他'];
+const CATEGORY_EMOJIS = {'餐饮':'🍜','交通':'🚌','购物':'🛒','居住':'🏠','娱乐':'🎮','医疗':'💊','教育':'📚','通讯':'📱','服饰':'👔','其他':'📌','工资':'💰','奖金':'🎁','兼职':'🔧','投资':'📈','退款':'↩️','红包':'🧧'};
+const CATEGORY_COLORS = ['#ff4757','#2ed573','#1e90ff','#ffa502','#ff6b81','#7bed9f','#70a1ff','#eccc68','#a29bfe','#fd79a8'];
+const ICON_OPTIONS = ['💳','💵','💬','🔵','🏦','📱','💰','🎫','⭐','🔑','❤️','✨'];
+
+let paymentMethods = [
+  { id: 'cash', name: '现金', icon: '💵' },
+  { id: 'wechat', name: '微信', icon: '💬' },
+  { id: 'alipay', name: '支付宝', icon: '🔵' },
+  { id: 'bank', name: '银行卡', icon: '💳' },
+];
+
+const now = new Date();
+const todayTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+const yesterdayTs = todayTs - 86400000;
+const twoDaysAgoTs = todayTs - 172800000;
+
+let expenses = [
+  { id: 'e1', type: 'expense', amount: 3500, category: '餐饮', paymentMethod: 'wechat', note: '午餐外卖', createdAt: todayTs + 36000000 },
+  { id: 'e2', type: 'expense', amount: 1500, category: '交通', paymentMethod: 'alipay', note: '地铁', createdAt: todayTs + 28800000 },
+  { id: 'e3', type: 'income', amount: 1500000, category: '工资', paymentMethod: 'bank', note: '5月工资', createdAt: todayTs + 7200000 },
+  { id: 'e4', type: 'expense', amount: 28000, category: '购物', paymentMethod: 'alipay', note: '日用品', createdAt: yesterdayTs + 54000000 },
+  { id: 'e5', type: 'expense', amount: 4200, category: '餐饮', paymentMethod: 'cash', note: '晚餐', createdAt: yesterdayTs + 64800000 },
+  { id: 'e6', type: 'expense', amount: 150000, category: '居住', paymentMethod: 'bank', note: '房租', createdAt: twoDaysAgoTs + 36000000 },
+  { id: 'e7', type: 'expense', amount: 6800, category: '娱乐', paymentMethod: 'wechat', note: '电影票', createdAt: twoDaysAgoTs + 72000000 },
+  { id: 'e8', type: 'income', amount: 20000, category: '红包', paymentMethod: 'wechat', note: '生日红包', createdAt: twoDaysAgoTs + 43200000 },
+];
+
+// ============ 状态 ============
+let currentType = 'expense';
+let currentCategory = '餐饮';
+let currentPayment = 'cash';
+let selectedExpenseDate = new Date();
+let editingExpenseId = null;
+let pendingDeleteId = null;
+
+// 账单过滤状态
+let filterStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+let filterEndDate = new Date();
+let filterSelectedPayments = [];
+let filterTypes = ['expense', 'income'];
+let datePickerMode = 'expense';
+let datePickerTarget = null;
+let calendarMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+let tempSelectedPayments = [];
+
+// ============ 工具函数 ============
+function formatMoney(cents) {
+  const yuan = (cents / 100).toFixed(2);
+  return yuan.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function formatDateDisplay(ts) {
+  const d = new Date(ts);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return '今天';
+  if (d.toDateString() === yesterday.toDateString()) return '昨天';
+  return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function formatDateGroup(ts) {
+  const d = new Date(ts);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return '📅 今天';
+  if (d.toDateString() === yesterday.toDateString()) return '📅 昨天';
+  return `📅 ${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+}
+
+function formatShortDate(d) {
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) return '今天';
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return '昨天';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getPaymentInfo(methodId) {
+  const pm = paymentMethods.find(p => p.id === methodId);
+  if (pm) return pm;
+  const defaults = { cash: {name:'现金',icon:'💵'}, wechat: {name:'微信',icon:'💬'}, alipay: {name:'支付宝',icon:'🔵'}, bank: {name:'银行卡',icon:'💳'} };
+  return defaults[methodId] || { name: methodId, icon: '📌' };
+}
+
+function getCatEmoji(cat) { return CATEGORY_EMOJIS[cat] || '📌'; }
+function getCatColor(cat) {
+  const allCats = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
+  const idx = allCats.indexOf(cat);
+  return CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
+}
+
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+// ============ 界面切换 ============
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'statsScreen') updateStats();
+  if (id === 'paymentScreen') renderPaymentList();
+}
+
+// ============ 主页渲染 ============
+function renderHome() {
+  const todayExp = expenses.filter(e => e.createdAt >= todayTs && e.type === 'expense');
+  const todayInc = expenses.filter(e => e.createdAt >= todayTs && e.type === 'income');
+  const totalExp = todayExp.reduce((s, e) => s + e.amount, 0);
+  const totalInc = todayInc.reduce((s, e) => s + e.amount, 0);
+  const bal = totalInc - totalExp;
+
+  document.getElementById('todayExpense').textContent = formatMoney(totalExp);
+  document.getElementById('todayIncome').textContent = formatMoney(totalInc);
+  const balEl = document.getElementById('todayBalance');
+  balEl.textContent = (bal < 0 ? '- ' : '') + formatMoney(Math.abs(bal));
+  balEl.className = 'summary-value ' + (bal >= 0 ? 'positive' : 'negative');
+
+  document.getElementById('totalCount').textContent = `共 ${expenses.length} 条记录`;
+
+  // 按天分组
+  const groups = {};
+  expenses.forEach(e => {
+    const key = formatDateGroup(e.createdAt);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(e);
+  });
+
+  const listEl = document.getElementById('expenseList');
+  if (Object.keys(groups).length === 0) {
+    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-text">还没有记账，点击下方 + 开始记一笔吧</div></div>';
+    return;
+  }
+
+  let html = '';
+  Object.entries(groups).forEach(([groupName, items]) => {
+    html += `<div class="group-header">${groupName}</div>`;
+    items.forEach(e => {
+      const icon = getCatEmoji(e.category);
+      const pm = getPaymentInfo(e.paymentMethod);
+      if (pendingDeleteId === e.id) {
+        html += `<div class="expense-row">
+          <div class="delete-confirm">
+            <span class="delete-confirm-text">确定删除？</span>
+            <button class="btn-small btn-confirm" onclick="confirmDelete('${e.id}')">确定</button>
+            <button class="btn-small btn-cancel-small" onclick="cancelDelete()">取消</button>
+          </div>
+        </div>`;
+      } else {
+        html += `<div class="expense-row" onclick="editExpense('${e.id}')">
+          <div class="expense-left">
+            <span class="expense-icon">${icon}</span>
+            <div class="expense-info">
+              <div class="expense-cat">${e.category}</div>
+              <div class="expense-note">${e.note || '—'}</div>
+              <div class="expense-payment">${pm.icon} ${pm.name}</div>
+            </div>
+          </div>
+          <div class="expense-right">
+            <div class="expense-amount ${e.type}">${e.type === 'expense' ? '-' : '+'}${formatMoney(e.amount)}</div>
+            <div class="expense-time">${formatDateDisplay(e.createdAt)}</div>
+            <button class="expense-delete" onclick="event.stopPropagation();requestDelete('${e.id}')">✕</button>
+          </div>
+        </div>`;
+      }
+    });
+  });
+  listEl.innerHTML = html;
+}
+
+function requestDelete(id) { pendingDeleteId = id; renderHome(); }
+function cancelDelete() { pendingDeleteId = null; renderHome(); }
+function confirmDelete(id) {
+  expenses = expenses.filter(e => e.id !== id);
+  pendingDeleteId = null;
+  renderHome();
+}
+
+// ============ 记账弹窗 ============
+function openAddExpense() {
+  editingExpenseId = null;
+  currentType = 'expense';
+  currentCategory = '餐饮';
+  currentPayment = paymentMethods[0]?.id || 'cash';
+  selectedExpenseDate = new Date();
+  document.getElementById('amountInput').value = '';
+  document.getElementById('noteInput').value = '';
+  document.querySelector('.modal-header .title').textContent = '记一笔';
+  document.querySelector('.modal-header .save').textContent = '保存';
+  updateAddExpenseUI();
+  document.getElementById('addExpenseModal').classList.add('active');
+}
+
+function editExpense(id) {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  editingExpenseId = id;
+  currentType = e.type;
+  currentCategory = e.category;
+  currentPayment = e.paymentMethod;
+  selectedExpenseDate = new Date(e.createdAt);
+  document.getElementById('amountInput').value = (e.amount / 100).toFixed(2);
+  document.getElementById('noteInput').value = e.note || '';
+  document.querySelector('.modal-header .title').textContent = '编辑账单';
+  document.querySelector('.modal-header .save').textContent = '更新';
+  updateAddExpenseUI();
+  document.getElementById('addExpenseModal').classList.add('active');
+}
+
+function closeAddExpense() {
+  document.getElementById('addExpenseModal').classList.remove('active');
+}
+
+function toggleType(type) {
+  currentType = type;
+  currentCategory = type === 'expense' ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0];
+  updateAddExpenseUI();
+}
+
+function updateAddExpenseUI() {
+  const expBtn = document.getElementById('typeExpenseBtn');
+  const incBtn = document.getElementById('typeIncomeBtn');
+  expBtn.className = 'type-btn' + (currentType === 'expense' ? ' active-expense' : '');
+  incBtn.className = 'type-btn' + (currentType === 'income' ? ' active-income' : '');
+
+  document.getElementById('categoryValue').textContent = `${getCatEmoji(currentCategory)} ${currentCategory}`;
+  const pm = getPaymentInfo(currentPayment);
+  document.getElementById('paymentLabel').textContent = currentType === 'expense' ? '付款方式' : '收款方式';
+  document.getElementById('paymentValue').textContent = `${pm.icon} ${pm.name}`;
+  document.getElementById('expenseDateValue').textContent = formatShortDate(selectedExpenseDate);
+}
+
+function saveExpense() {
+  const amountStr = document.getElementById('amountInput').value;
+  const amount = Math.round(parseFloat(amountStr) * 100);
+  if (!amountStr || isNaN(amount) || amount <= 0) { alert('请输入有效金额'); return; }
+  const note = document.getElementById('noteInput').value.trim();
+  const now = new Date();
+  const createdAt = new Date(selectedExpenseDate);
+  createdAt.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+
+  if (editingExpenseId) {
+    const e = expenses.find(x => x.id === editingExpenseId);
+    if (e) { e.type = currentType; e.amount = amount; e.category = currentCategory; e.paymentMethod = currentPayment; e.note = note; }
+  } else {
+    expenses.unshift({ id: generateId(), type: currentType, amount, category: currentCategory, paymentMethod: currentPayment, note, createdAt: createdAt.getTime() });
+  }
+  closeAddExpense();
+  renderHome();
+}
+
+// ============ 分类选择 ============
+function openCategoryPicker() {
+  const cats = currentType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const grid = document.getElementById('categoryGrid');
+  grid.innerHTML = cats.map(c => `<div class="picker-item${c === currentCategory ? ' selected' : ''}" onclick="selectCategory('${c}')">${getCatEmoji(c)} ${c}</div>`).join('');
+  document.getElementById('categoryPickerOverlay').classList.add('active');
+}
+
+function closeCategoryPicker(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('categoryPickerOverlay').classList.remove('active');
+}
+
+function selectCategory(cat) {
+  currentCategory = cat;
+  updateAddExpenseUI();
+  document.getElementById('categoryPickerOverlay').classList.remove('active');
+}
+
+// ============ 付款方式选择（记账） ============
+function openPaymentPicker() {
+  const list = document.getElementById('paymentPickerList');
+  list.innerHTML = paymentMethods.map(pm => `<div class="picker-list-item${pm.id === currentPayment ? ' selected' : ''}" onclick="selectPayment('${pm.id}')">
+    <span class="picker-list-item-text">${pm.icon} ${pm.name}</span>
+    ${pm.id === currentPayment ? '<span class="checkmark">✓</span>' : ''}
+  </div>`).join('');
+  document.getElementById('paymentPickerOverlay').classList.add('active');
+}
+
+function closePaymentPicker(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('paymentPickerOverlay').classList.remove('active');
+}
+
+function selectPayment(id) {
+  currentPayment = id;
+  updateAddExpenseUI();
+  document.getElementById('paymentPickerOverlay').classList.remove('active');
+}
+
+// ============ 日期选择 ============
+function openDatePicker(mode) {
+  datePickerMode = mode;
+  if (mode === 'expense') {
+    calendarMonth = new Date(selectedExpenseDate.getFullYear(), selectedExpenseDate.getMonth(), 1);
+    datePickerTarget = selectedExpenseDate;
+  } else if (mode === 'start') {
+    calendarMonth = new Date(filterStartDate.getFullYear(), filterStartDate.getMonth(), 1);
+    datePickerTarget = filterStartDate;
+  } else {
+    calendarMonth = new Date(filterEndDate.getFullYear(), filterEndDate.getMonth(), 1);
+    datePickerTarget = filterEndDate;
+  }
+  renderCalendar();
+  document.getElementById('datePickerOverlay').classList.add('active');
+}
+
+function closeDatePicker() { document.getElementById('datePickerOverlay').classList.remove('active'); }
+
+function prevMonth() { calendarMonth.setMonth(calendarMonth.getMonth() - 1); renderCalendar(); }
+function nextMonth() { calendarMonth.setMonth(calendarMonth.getMonth() + 1); renderCalendar(); }
+
+function renderCalendar() {
+  const year = calendarMonth.getFullYear();
+  const month = calendarMonth.getMonth();
+  document.getElementById('datePickerMonth').textContent = `${year}年${month + 1}月`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  let html = '';
+  for (let i = 0; i < firstDay; i++) {
+    const prevMonthDays = new Date(year, month, 0).getDate();
+    html += `<div class="date-picker-day other-month">${prevMonthDays - firstDay + i + 1}</div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    const isToday = date.toDateString() === today.toDateString();
+    const isSelected = datePickerTarget && date.toDateString() === datePickerTarget.toDateString();
+    const cls = `date-picker-day${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`;
+    html += `<div class="${cls}" onclick="selectDate(${year},${month},${d})">${d}</div>`;
+  }
+  const totalCells = firstDay + daysInMonth;
+  const remaining = (7 - totalCells % 7) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    html += `<div class="date-picker-day other-month">${i}</div>`;
+  }
+  document.getElementById('datePickerGrid').innerHTML = html;
+}
+
+function selectDate(y, m, d) {
+  datePickerTarget = new Date(y, m, d);
+  renderCalendar();
+}
+
+function confirmDatePicker() {
+  if (datePickerMode === 'expense') {
+    selectedExpenseDate = datePickerTarget;
+    updateAddExpenseUI();
+  } else if (datePickerMode === 'start') {
+    filterStartDate = datePickerTarget;
+    document.getElementById('filterStartDate').textContent = formatShortDate(filterStartDate);
+    updateStats();
+  } else {
+    filterEndDate = datePickerTarget;
+    document.getElementById('filterEndDate').textContent = formatShortDate(filterEndDate);
+    updateStats();
+  }
+  closeDatePicker();
+}
+
+// ============ 账单统计 ============
+function toggleFilterType(type) {
+  const idx = filterTypes.indexOf(type);
+  if (idx >= 0) filterTypes.splice(idx, 1);
+  else filterTypes.push(type);
+  const expBtn = document.getElementById('filterTypeExpense');
+  const incBtn = document.getElementById('filterTypeIncome');
+  expBtn.className = 'type-chip' + (filterTypes.includes('expense') ? ' expense-active' : '');
+  incBtn.className = 'type-chip' + (filterTypes.includes('income') ? ' income-active' : '');
+  updateStats();
+}
+
+function resetFilters() {
+  filterStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  filterEndDate = new Date();
+  filterSelectedPayments = [];
+  filterTypes = ['expense', 'income'];
+  document.getElementById('filterStartDate').textContent = formatShortDate(filterStartDate);
+  document.getElementById('filterEndDate').textContent = formatShortDate(filterEndDate);
+  document.getElementById('filterTypeExpense').className = 'type-chip expense-active';
+  document.getElementById('filterTypeIncome').className = 'type-chip income-active';
+  document.getElementById('filterPaymentBtn').className = 'filter-chip';
+  document.getElementById('filterPaymentBtn').textContent = '全部';
+  updateStats();
+}
+
+function updateStats() {
+  const startTs = filterStartDate.getTime();
+  const endTs = new Date(filterEndDate).setHours(23, 59, 59, 999);
+  const filtered = expenses.filter(e => {
+    if (e.createdAt < startTs || e.createdAt > endTs) return false;
+    if (filterTypes.length > 0 && !filterTypes.includes(e.type)) return false;
+    if (filterSelectedPayments.length > 0 && !filterSelectedPayments.includes(e.paymentMethod)) return false;
+    return true;
+  });
+
+  const totalExp = filtered.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+  const totalInc = filtered.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+  const bal = totalInc - totalExp;
+
+  document.getElementById('filterExpense').textContent = '¥ ' + formatMoney(totalExp);
+  document.getElementById('filterIncome').textContent = '¥ ' + formatMoney(totalInc);
+  const balEl = document.getElementById('filterBalance');
+  balEl.textContent = (bal < 0 ? '- ¥ ' : '¥ ') + formatMoney(Math.abs(bal));
+  balEl.className = 'stat-value ' + (bal >= 0 ? 'positive' : 'negative');
+  document.getElementById('filterRecordCount').textContent = `共 ${filtered.length} 条记录`;
+
+  // 分类统计
+  const catStats = {};
+  filtered.filter(e => e.type === 'expense').forEach(e => { catStats[e.category] = (catStats[e.category] || 0) + e.amount; });
+  const catEntries = Object.entries(catStats).sort((a, b) => b[1] - a[1]);
+  const totalExpAmount = filtered.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+
+  const catSection = document.getElementById('categoryStatsSection');
+  if (catEntries.length > 0) {
+    catSection.style.display = '';
+    document.getElementById('categoryStatsList').innerHTML = catEntries.map(([cat, amt]) => {
+      const pct = totalExpAmount > 0 ? Math.round((amt / totalExpAmount) * 100) : 0;
+      return `<div class="cat-item">
+        <div class="cat-header"><span class="cat-name">${getCatEmoji(cat)} ${cat}</span><span class="cat-amount">¥ ${formatMoney(amt)}</span></div>
+        <div class="cat-progress"><div class="cat-bar" style="width:${pct}%;background:${getCatColor(cat)}"></div></div>
+        <div class="cat-percent">${pct}%</div>
+      </div>`;
+    }).join('');
+  } else { catSection.style.display = 'none'; }
+
+  // 付款方式统计
+  const pmStats = {};
+  filtered.forEach(e => { pmStats[e.paymentMethod] = (pmStats[e.paymentMethod] || 0) + e.amount; });
+  const pmEntries = Object.entries(pmStats).sort((a, b) => b[1] - a[1]);
+  const totalAmount = filtered.reduce((s, e) => s + e.amount, 0);
+
+  const pmSection = document.getElementById('paymentStatsSection');
+  if (pmEntries.length > 0) {
+    pmSection.style.display = '';
+    document.getElementById('paymentStatsList').innerHTML = pmEntries.map(([pmId, amt]) => {
+      const pm = getPaymentInfo(pmId);
+      const pct = totalAmount > 0 ? Math.round((amt / totalAmount) * 100) : 0;
+      return `<div class="cat-item">
+        <div class="cat-header"><span class="cat-name">${pm.icon} ${pm.name}</span><span class="cat-amount">¥ ${formatMoney(amt)}</span></div>
+        <div class="cat-progress"><div class="cat-bar" style="width:${pct}%;background:#5b6abf"></div></div>
+        <div class="cat-percent">${pct}%</div>
+      </div>`;
+    }).join('');
+  } else { pmSection.style.display = 'none'; }
+
+  // 账单明细
+  const sorted = [...filtered].sort((a, b) => b.createdAt - a.createdAt);
+  const groups = {};
+  sorted.forEach(e => {
+    const key = formatDateDisplay(e.createdAt);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(e);
+  });
+
+  const listEl = document.getElementById('filterExpenseList');
+  if (Object.keys(groups).length > 0) {
+    listEl.innerHTML = Object.entries(groups).map(([groupName, items]) => {
+      let html = `<div class="group-header" style="padding:10px 0;">${groupName}</div>`;
+      items.forEach(e => {
+        const pm = getPaymentInfo(e.paymentMethod);
+        html += `<div class="stats-expense-row">
+          <div class="stats-expense-left">
+            <span class="stats-expense-icon">${getCatEmoji(e.category)}</span>
+            <div class="stats-expense-info">
+              <div class="stats-expense-cat">${e.category}</div>
+              <div class="stats-expense-note">${e.note || '—'}</div>
+            </div>
+          </div>
+          <div class="stats-expense-right">
+            <div class="stats-expense-amount" style="color:${e.type==='expense'?'#ff4757':'#2ed573'}">${e.type==='expense'?'-':'+'}${formatMoney(e.amount)}</div>
+            <div class="stats-expense-payment">${pm.icon} ${pm.name}</div>
+          </div>
+        </div>`;
+      });
+      return html;
+    }).join('');
+  } else {
+    listEl.innerHTML = '<div style="padding:40px 0;text-align:center;"><div style="font-size:48px;margin-bottom:8px;">📝</div><div style="font-size:14px;color:#aaa;">筛选条件下暂无记录</div></div>';
+  }
+}
+
+// ============ 付款方式过滤 ============
+function openPaymentFilter() {
+  tempSelectedPayments = [...filterSelectedPayments];
+  renderPaymentFilterList();
+  document.getElementById('paymentFilterOverlay').classList.add('active');
+}
+
+function closePaymentFilter(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('paymentFilterOverlay').classList.remove('active');
+}
+
+function renderPaymentFilterList() {
+  document.getElementById('paymentFilterList').innerHTML = paymentMethods.map(pm => {
+    const sel = tempSelectedPayments.includes(pm.id);
+    return `<div class="multi-select-item${sel ? ' selected' : ''}" onclick="toggleTempPayment('${pm.id}')">
+      <span class="multi-select-item-text">${pm.icon} ${pm.name}</span>
+      ${sel ? '<span class="checkmark">✓</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleTempPayment(id) {
+  const idx = tempSelectedPayments.indexOf(id);
+  if (idx >= 0) tempSelectedPayments.splice(idx, 1);
+  else tempSelectedPayments.push(id);
+  renderPaymentFilterList();
+}
+
+function confirmPaymentFilter() {
+  filterSelectedPayments = [...tempSelectedPayments];
+  const btn = document.getElementById('filterPaymentBtn');
+  if (filterSelectedPayments.length === 0) {
+    btn.className = 'filter-chip';
+    btn.textContent = '全部';
+  } else {
+    btn.className = 'filter-chip active';
+    btn.textContent = `${filterSelectedPayments.length}项`;
+  }
+  document.getElementById('paymentFilterOverlay').classList.remove('active');
+  updateStats();
+}
+
+// ============ 付款方式管理 ============
+function renderPaymentList() {
+  const listEl = document.getElementById('paymentList');
+  listEl.innerHTML = paymentMethods.map(pm => `<div class="payment-card">
+    <div class="payment-card-left">
+      <span class="payment-card-icon">${pm.icon}</span>
+      <div>
+        <div class="payment-card-name">${pm.name}</div>
+        <div class="payment-card-hint">用于记账时快速选择</div>
+      </div>
+    </div>
+    <button class="delete-btn" onclick="deletePayment('${pm.id}')">删除</button>
+  </div>`).join('');
+}
+
+function openAddPayment() {
+  document.getElementById('pmNameInput').value = '';
+  renderEmojiGrid('');
+  document.getElementById('addPmOverlay').classList.add('active');
+}
+
+function closeAddPayment(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('addPmOverlay').classList.remove('active');
+}
+
+let selectedEmoji = '';
+function renderEmojiGrid(sel) {
+  selectedEmoji = sel;
+  document.getElementById('emojiGrid').innerHTML = ICON_OPTIONS.map(icon => `<div class="emoji-item${icon === sel ? ' selected' : ''}" onclick="renderEmojiGrid('${icon}')">${icon}</div>`).join('');
+}
+
+function savePaymentMethod() {
+  const name = document.getElementById('pmNameInput').value.trim();
+  if (!name) { alert('请输入名称'); return; }
+  if (!selectedEmoji) { alert('请选择图标'); return; }
+  paymentMethods.push({ id: generateId(), name, icon: selectedEmoji });
+  document.getElementById('addPmOverlay').classList.remove('active');
+  renderPaymentList();
+}
+
+function deletePayment(id) {
+  if (confirm('确定要删除吗？')) {
+    paymentMethods = paymentMethods.filter(p => p.id !== id);
+    renderPaymentList();
+  }
+}
+
+// ============ 设置 ============
+function exportData() { alert('数据已导出为 JSON 文件'); }
+function importData() { alert('请选择备份文件导入'); }
+function clearAllData() {
+  if (confirm('此操作将删除所有记账记录和设置，确定继续吗？')) {
+    expenses = [];
+    renderHome();
+    showScreen('homeScreen');
+  }
+}
+
+// ============ 初始化 ============
+function updateStatusTime() {
+  const now = new Date();
+  document.getElementById('statusTime').textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+document.getElementById('filterStartDate').textContent = formatShortDate(filterStartDate);
+document.getElementById('filterEndDate').textContent = formatShortDate(filterEndDate);
+updateStatusTime();
+setInterval(updateStatusTime, 30000);
+renderHome();
+renderEmojiGrid('');
+</script>
+</body>
+</html>

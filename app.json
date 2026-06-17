@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "记账",
+    "slug": "JiZhang",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./logo.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.jizhang"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./logo.png",
+        "backgroundImage": "./logo.png",
+        "monochromeImage": "./logo.png"
+      },
+      "package": "com.example.jizhang",
+      "versionCode": 9,
+      "androidVersion": 100,
+      "minSdkVersion": 25
+    },
+    "web": {
+      "favicon": "./logo.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d59486df-c413-497a-b2bd-f291c69e1745"
+      }
+    },
+    "owner": "czyily88"
+  }
+}

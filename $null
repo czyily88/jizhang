@@ -1,0 +1,9 @@
+Get-Item : 找不到路径“C:\jizhang-2026-06-05\android\app\build\outputs\apk\release\app-release.apk”，因
+为该路径不存在。
+所在位置 行:1 字符: 2
++ (Get-Item 'C:\jizhang-2026-06-05\android\app\build\outputs\apk\releas ...
++  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (C:\jizhang-2026...app-release.apk:String) [Get-Item], Ite 
+   mNotFoundException
+    + FullyQualifiedErrorId : PathNotFound,Microsoft.PowerShell.Commands.GetItemCommand
+ 

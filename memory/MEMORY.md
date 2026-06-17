@@ -1,0 +1,4 @@
+- [本地 Release APK 构建](local_release_build.md) - Gradle 9.3.1 内联构建配置和最新记录
+- [Release APK 构建记录](release_build_log.md) - 历史构建日志
+- [APK 构建指令大全](apk_build_instructions.md) - 一键构建命令、环境检查和故障处理
+- [收支显示规范](expense_income_display_spec.md) - 全局金额符号和颜色规范 (支出绿色带负号，收入红色带正号)
