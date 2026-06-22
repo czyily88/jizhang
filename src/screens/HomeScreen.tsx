@@ -1,5 +1,6 @@
-import React, { useState, Fragment } from 'react';
+import React, { useState, Fragment, useRef, useLayoutEffect, useEffect } from 'react';
 import { StatusBar, View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../AppContext';
 import { formatMoney, formatDate, formatDateGroup, type Expense } from '../types';
 
@@ -10,8 +11,50 @@ interface HomeScreenProps {
   onEdit?: (expense: Expense) => void;
 }
 
+const SCROLL_POSITION_KEY = '@jizhang_home_scroll_position';
+
 export default function HomeScreen({ onAdd, onViewStats, onViewSettings, onEdit }: HomeScreenProps) {
   const { expenses, removeExpense, paymentMethods, expenseCategories, incomeCategories } = useApp();
+
+  // ScrollView 引用
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // 使用 state 存储滚动位置和数据加载状态
+  const [scrollPositionLoaded, setScrollPositionLoaded] = useState(false);
+  const [savedScrollY, setSavedScrollY] = useState(0);
+
+  // 加载保存的滚动位置（异步）
+  useEffect(() => {
+    AsyncStorage.getItem(SCROLL_POSITION_KEY).then(value => {
+      if (value) {
+        setSavedScrollY(parseFloat(value));
+      }
+      setScrollPositionLoaded(true);
+    });
+  }, []);
+
+  // 保存滚动位置到 AsyncStorage
+  const saveScrollPosition = async (y: number) => {
+    try {
+      await AsyncStorage.setItem(SCROLL_POSITION_KEY, y.toString());
+    } catch (error) {
+      console.log('保存滚动位置失败:', error);
+    }
+  };
+
+  // 在数据加载完成且内容变化后恢复滚动位置
+  useEffect(() => {
+    if (scrollPositionLoaded && groupKeys.length > 0) {
+      restoreScrollPosition(savedScrollY);
+    }
+  }, [expenses.length, scrollPositionLoaded]);
+
+  // 恢复滚动位置
+  const restoreScrollPosition = (y: number) => {
+    if (scrollViewRef.current && y > 0) {
+      scrollViewRef.current.scrollTo({ y, animated: false });
+    }
+  };
 
   // 今日收支统计 - 支出为负，收入为正
   const todayStart = new Date();
@@ -145,7 +188,17 @@ export default function HomeScreen({ onAdd, onViewStats, onViewSettings, onEdit 
 
       {/* 账单列表 */}
       {groupKeys.length > 0 ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView
+          ref={scrollViewRef}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          onScroll={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            setSavedScrollY(y);
+            saveScrollPosition(y);
+          }}
+          scrollEventThrottle={16}
+        >
           {groupKeys.map(groupName => (
             <Fragment key={groupName}>
               <Text style={styles.groupHeader}>{groupName}</Text>

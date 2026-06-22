@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# 忽略指定的临时文件
+新建 文本文档.txt
+构建命令.txt

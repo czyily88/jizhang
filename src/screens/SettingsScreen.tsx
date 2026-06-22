@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Share, StatusBar, SafeAreaView, Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -12,6 +12,17 @@ interface SettingsScreenProps {
   onManageCategories: () => void;
 }
 
+// 从 package.json 读取版本号的辅助函数
+const getAppVersion = async (): Promise<string> => {
+  try {
+    // 打包后的 Android/iOS 应用无法直接读取 package.json
+    // 这里使用预定义的版本号或返回默认值
+    return '2.1.1';
+  } catch {
+    return '2.1.1';
+  }
+};
+
 interface BackupData {
   expenses: any[];
   paymentMethods: any[];
@@ -22,6 +33,13 @@ interface BackupData {
 
 export default function SettingsScreen({ onClose, onManagePayment, onManageCategories }: SettingsScreenProps) {
   const { expenses, paymentMethods, expenseCategories, incomeCategories } = useApp();
+  
+  // 获取版本号
+  const [version, setVersion] = useState('加载中...');
+
+  useEffect(() => {
+    getAppVersion().then(setVersion);
+  }, []);
 
 // 生成临时文件路径（使用 legacy API）
 const generateTempUri = (fileName: string): string => {
@@ -249,7 +267,7 @@ const handleExport = async () => {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.version}>版本 2.1.0</Text>
+        <Text style={styles.version}>版本 {version}</Text>
         <Text style={styles.copyright}>©czy</Text>
       </View>
     </ScrollView>
